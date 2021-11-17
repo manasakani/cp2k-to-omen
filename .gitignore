@@ -1,0 +1,13 @@
+# Ignore the following files
+
+# cp2k outputs which create_omen_input.py expects
+geoopt-KS_SPIN_1-1_0.csr
+geoopt-S_SPIN_1-1_0.csr
+log_energy.out
+structure.xyz
+
+# output files
+H.png
+lattice_dat
+LM_dat
+Smin_dat
