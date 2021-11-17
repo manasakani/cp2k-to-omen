@@ -305,7 +305,7 @@ def create_device_matrix(M, coords, num_orb_per_atom, blocks, no_atoms_per_block
 	
 	return M, LM		
 
-def print_lattice_files(LM, atoms, atomic_kinds, no_atoms_first_block, repeat_blocks):
+def print_lattice_files(LM, atomic_kinds):
 	
 	''' 
 	Internal fxn, prints a plain text with the following format:

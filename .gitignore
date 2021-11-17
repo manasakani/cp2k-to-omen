@@ -11,3 +11,6 @@ H.png
 lattice_dat
 LM_dat
 Smin_dat
+
+# Python environment with all required packages loaded
+job_submission/
