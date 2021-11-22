@@ -188,14 +188,26 @@ def print_lattice_files(LM, atomic_kinds):
 	# The fourth column of the LM matrix holds the index of the corresponding atom name in atomic_kinds
 	atom_names = [atomic_kinds[int(index)-1] for index in LM[:, -1]]
 	
+	# Make 'box' with 'f' % empty space around it:
+	f = 1.1
+	Lx = np.max(LM[:,0])-np.min(LM[:,0])*f
+	Ly = np.max(LM[:,1])-np.min(LM[:,1])*f
+	Lz = np.max(LM[:,2])-np.min(LM[:,2])*f
+	box = np.diag([Lx, Ly, Lz])
+	
 	# Print the LM_dat and lattice_dat files:
 	with open('LM_dat', 'w') as filehandle:
 		for row in LM:
 			filehandle.write('{:.7f}\t{:.7f}\t{:.7f}\t{:.7f}\n'.format(row[0], row[1], row[2], row[3]))
 
 	with open('lattice_dat', 'w') as filehandle:
-		# @Manasa: Add the cell size and the # atoms at the top
-		filehandle.write('{}\t{}\t{}\t{}\t{}\n\n'.format(np.shape(LM)[1], np.shape(atomic_kinds)[0], 0, 0, 0))
+		# Write cell size:
+		filehandle.write('{} {} {} {} {}\n\n'.format(np.shape(LM)[0], np.shape(atomic_kinds)[0], 0, 0, 0))
+		# Write device size (periodic repeating unit)
+		filehandle.write('{} {} {}\n'.format(box[0, 0], box[0, 1], box[0, 2]))
+		filehandle.write('{} {} {}\n'.format(box[1, 0], box[1, 1], box[1, 2]))
+		filehandle.write('{} {} {}\n'.format(box[2, 0], box[2, 1], box[2, 2]))
+		
 		for atom, row in zip(atom_names, lattice):
 			filehandle.write('{}\t{:.7f}\t{:.7f}\t{:.7f}\n'.format(atom, row[0], row[1], row[2]))
 			
@@ -273,8 +285,8 @@ def clean_matrix(M, Smin, num_orb_per_atom):
 			if np.count_nonzero(M[blocks[ind2]-1:blocks[ind2+1]-1 , blocks[ind1]-1:blocks[ind1+1]-1])>0:
 				neigh[1, ind1] += 1
 				
+	# Delete the entries that are beyond the intended neighbors
 	nn = int(neigh[0, 0])
-	
 	for ii in range(np.shape(neigh)[1] - nn):
 		for jj in range(ii+nn+1, np.shape(neigh)[1]):
 			if np.count_nonzero(M[blocks[ii]:blocks[ii+1], blocks[jj]:blocks[jj+1]]) > 0:
@@ -354,12 +366,11 @@ def main():
 	print('Cleaning matrix entries beyond the expected # of nearest neighbors...')
 	num_orb_per_atom = np.array([no_orbitals[int(index)-1] for index in LM[:, -1]])
 	H = clean_matrix(H, Smin, num_orb_per_atom)
-	S = clean_matrix(S, Smin, num_orb_per_atom)
-	
-	# this is a comment
-	
+	S = clean_matrix(S, Smin, num_orb_per_atom)	
 	
 	# Write binary files for the hamiltonian and overlap matrices
+	util.write_mat_to_bin('H_4.bin', H)
+	util.write_mat_to_bin('S_4.bin', H)
 
 	print('Finished pre-processing, matrices and input files are ready to use.')	
 
