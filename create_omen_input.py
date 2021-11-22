@@ -6,14 +6,8 @@ from lib import utils as util
 
 def extract_basis_set(output_log):
 	''' 
-	Reads the atomic kinds and # orbitals per atom from a cp2k output log
-	
-	Args:
-		1. cp2k output filename to search
-		
-	Returns:
-		1. A (1x* str) list of atomic symbols, where * is the number of different atomic types present
-		2. A (1x* int) list of the # of orbitals corresponding to each atom in the atomic_kinds list
+	Internal. Reads the atomic kinds and # orbitals per atom from a cp2k output log.
+
 	'''
 	
 	atomic_kinds = []
@@ -33,14 +27,11 @@ def extract_basis_set(output_log):
 def create_device_matrix(M, coords, num_orb_per_atom, blocks, no_atoms_per_block, no_orb, block_delete, block_repeat, eps):
 	
 	''' 
-	Internal fxn. Takes the KS and S matrices and modifies them accordingly to create the device matrices,
+	Internal. Takes the KS and S matrices and modifies them accordingly to create the device matrices,
 	by adding/removing contact blocks, formatting the channel elements, etc.
 	
 	@Manasa: clean up this function it looks atrocious.
-	
-	Args:
-		
-	Returns:
+
 	'''
 	M = np.array(M)
 	size_M = np.shape(M)[0]
@@ -106,7 +97,7 @@ def create_device_matrix(M, coords, num_orb_per_atom, blocks, no_atoms_per_block
 	M_bottom = np.concatenate((np.zeros((size_M, left_repeats*num_orb_left)), M), axis = 1)
 	M = np.concatenate((M_top, M_bottom), axis = 0)
 	
-	
+		
 	# **************************
 	# Repeating the right contact
 	# **************************
@@ -153,7 +144,7 @@ def create_device_matrix(M, coords, num_orb_per_atom, blocks, no_atoms_per_block
 		Mnew = Mnew + np.kron(np.diag(np.ones(2*no_right-ind), ind), M[size_M-num_orb_right*(ind+1):size_M-num_orb_right*ind, size_M-num_orb_right:size_M])
 		
 	M[size_M-num_orb_right*no_right*2:size_M, size_M-num_orb_right*no_right*2:size_M] = Mnew
-	
+
 	# Create the full Hamiltonian
 	M = M + np.transpose(M) - np.diag(np.diag(M))
 	
@@ -187,10 +178,8 @@ def create_device_matrix(M, coords, num_orb_per_atom, blocks, no_atoms_per_block
 def print_lattice_files(LM, atomic_kinds):
 	
 	''' 
-	Internal fxn, prints a plain text with the following format:
+	Internal. Prints the lattice_dat and LM_dat files for OMEN.
 	
-	@Manasa: write this docstring
-
 	'''
 	
 	# Construct the lattice_dat file
@@ -213,10 +202,8 @@ def print_lattice_files(LM, atomic_kinds):
 	
 def print_Smin_file(LM, no_blocks, no_atoms_first_block):
 	''' 
-	Internal fxn, prints a plain text with the following format:
+	Internal. Prints the Smin file (indices of the start of each block)
 	
-	@Manasa: write this docstring
-
 	'''
 	
 	num_atoms = np.shape(LM)[0]
@@ -226,32 +213,84 @@ def print_Smin_file(LM, no_blocks, no_atoms_first_block):
 	channel_atoms_per_block = num_channel_atoms/no_blocks[1]
 	
 	Smin = [x*no_atoms_first_block[0]+1 for x in range(no_blocks[0]+1)]
-	Smin.extend([Smin[-1]+x*channel_atoms_per_block for x in range(1, no_blocks[1]+1)])
-	Smin.extend([Smin[-1]+x*no_atoms_first_block[1] for x in range(1, no_blocks[2]+1)])
+	Smin.extend([int(Smin[-1]+x*channel_atoms_per_block) for x in range(1, no_blocks[1]+1)])
+	Smin.extend([int(Smin[-1]+x*no_atoms_first_block[1]) for x in range(1, no_blocks[2]+1)])
 	Smin[-1] = Smin[-1] -1
 	
 	with open('Smin_dat', 'w') as filehandle:
 		filehandle.write('{:d}\n'.format(len(Smin)-1))
 		for index in Smin:
 			filehandle.write('{:d}\n'.format(int(index)))
+			
+	return Smin
 	
 def get_warnings(M):
+	
 	''' 
-	Internal fxn, checks the matrices for common errors, and prints warnings to a file 
+	Internal. Checks the matrices for common errors, and prints warnings to a file 
 	
-	@Manasa: write this docstring
-
 	'''
-
-	# @Manasa: write this function
+	# @Manasa: write this function and return the total # warnings to be printed.
 
 	pass
 	
-def clean_matrix(M):
-	pass
+def clean_matrix(M, Smin, num_orb_per_atom):
 	
-
-if __name__ == '__main__':
+	''' 
+	Internal. If the matrix has non-zero interaction parameters beyond the expected # of nearest-neighbor blocks,
+	this function manual sets them to zero and returns the thus 'cleaned' matrix
+	
+	Args:
+		(*x* numpy array) matrix to be cleaned
+		
+	Returns:
+		(*x* numpy array) cleaned matrix 
+	
+	'''
+	
+	# Find the block sizes (# orbitals per block)
+	block_size = np.zeros(len(Smin)-1)
+	for ind in range(len(block_size)-1):
+		block_size[ind] = sum(num_orb_per_atom[Smin[ind]-1:Smin[ind+1]-1])
+	
+	block_size[-1] = sum(num_orb_per_atom[Smin[-2]-1:Smin[-1]])
+	blocks = np.cumsum(block_size)+1
+	blocks = np.concatenate(([1], blocks), axis=0)
+	blocks = blocks.astype(int)
+	
+	neigh = -1*np.ones((2, len(blocks)-1))
+	
+	# Calculate forward neighbors
+	for ind1 in range(np.shape(neigh)[1]):
+		for ind2 in range(ind1, np.shape(neigh)[1]):
+			if np.count_nonzero(M[blocks[ind1]-1:blocks[ind1+1]-1 , blocks[ind2]-1:blocks[ind2+1]-1])>0:
+				neigh[0, ind1] += 1
+				
+	# Calculate backward neighbors
+	for ind1 in range(np.shape(neigh)[1]):
+		for ind2 in range(ind1, -1, -1):
+			if np.count_nonzero(M[blocks[ind2]-1:blocks[ind2+1]-1 , blocks[ind1]-1:blocks[ind1+1]-1])>0:
+				neigh[1, ind1] += 1
+				
+	nn = int(neigh[0, 0])
+	
+	for ii in range(np.shape(neigh)[1] - nn):
+		print(ii)
+		for jj in range(ii+nn+1, np.shape(neigh)[1]):
+			print(jj)
+			if np.count_nonzero(M[blocks[ii]:blocks[ii+1], blocks[jj]:blocks[jj+1]]) > 0:
+				M[blocks[ii]:blocks[ii+1], blocks[jj]:blocks[jj+1]] = 0
+				M[blocks[jj]:blocks[jj+1], blocks[ii]:blocks[ii+1]] = 0	
+		
+	return M
+		
+		
+def main():
+	
+	'''
+	Main process to create hamiltonian, overlap matrix, and other necessary input files for OMEN calculations
+	
+	'''
 	
 	print('**************** Making inputs for OMEN ********************')
 	
@@ -263,7 +302,7 @@ if __name__ == '__main__':
 	eps = 1e-6
 	xyz_file = 'structure.xyz'
 	KS_file = 'geoopt-KS_SPIN_1-1_0.csr'
-	S_file = 'geoopt-KS_SPIN_1-1_0.csr'
+	S_file = 'geoopt-S_SPIN_1-1_0.csr'
 	
 	# Get atomic structure information:
 	atomic_kinds, no_orbitals = extract_basis_set(output_log='log_energy.out')
@@ -272,42 +311,68 @@ if __name__ == '__main__':
 	coords = np.column_stack((coords, np.array([int(atomic_kinds.index(atom))+1 for atom in atoms])))
 	print(f'found {len(atomic_kinds)} atomic kinds: {atomic_kinds}, with corresponding # orbitals: {no_orbitals}')
 	
+	# In case there is a pickle of the matrices, load and use that
+	#try:
+	#	H = np.load('Hamiltonian.dat', allow_pickle=True)
+	#	S = np.load('Overlap.dat', allow_pickle=True)
+	#	print('Loaded H and S from pickle')
+	#	
+	#except FileNotFoundError:
+		
 	# Get Kohn-Sham and Overlap matrices from bin files in index-value format
 	print('Reading binary files...')
-	KS = util.read_bin(binfile=KS_file, struct_fmt='<IIIdI')
+	H = util.read_bin(binfile=KS_file, struct_fmt='<IIIdI')
 	S = util.read_bin(binfile=S_file, struct_fmt='<IIIdI')
-	
-	# Convert to full matrices
-	hartree_to_eV = 27.2114
-	KS = util.bin_to_csr(KS)*hartree_to_eV
-	S = util.bin_to_csr(S)
-	
-	# Create the device matrices by adding/removing contact blocks:
-	Hmax = np.amax(np.abs(KS))
-	print('Building hamiltonian...')
-	H, LM = create_device_matrix(KS, coords, num_orb_per_atom, no_blocks, no_atoms_first_block, no_orbitals, delete_blocks, repeat_blocks, Hmax*eps)
-	print('Building overlap matrix...')
-	S = create_device_matrix(S, coords, num_orb_per_atom, no_blocks, no_atoms_first_block, no_orbitals, delete_blocks, repeat_blocks, Hmax*eps*0.1) 	
 
+	# Convert to full matrices
+	print('Converting from csr to matrix representation...')
+	hartree_to_eV = 27.2114
+	H = util.bin_to_csr(H)*hartree_to_eV
+	S = util.bin_to_csr(S)
+
+	# Pickle dump the raw matrices for faster re-run
+	#np.save('Hamiltonian_bin.dat', Kohn_Sham)
+	#np.save('Overlap_bin.dat', S)
+		
+	# Create the device matrices by adding/removing contact blocks:
+	Hmax = np.amax(np.abs(H))
+	print('Building hamiltonian...')
+	H, LM = create_device_matrix(H, coords, num_orb_per_atom, no_blocks, no_atoms_first_block, no_orbitals, delete_blocks, repeat_blocks, Hmax*eps)
+	print('Building overlap matrix...')
+	S = create_device_matrix(S, coords, num_orb_per_atom, no_blocks, no_atoms_first_block, no_orbitals, delete_blocks, repeat_blocks, Hmax*eps*0.1)[0]
+	
 	print('Writing output files...')
 	
 	# Print the LM_dat and lattice_dat files:
 	print_lattice_files(LM, atomic_kinds)
 	
 	# Print the Smin file (atomic index of the end of each block)
-	print_Smin_file(LM, no_blocks, no_atoms_first_block)
+	Smin = print_Smin_file(LM, no_blocks, no_atoms_first_block)
 	
 	# Checking the matrices for building errors:
 	get_warnings(H)
 	
 	# Cleaning the matrices
-	print('Cleaning unwanted matrix entries...')
+	print('Cleaning matrix entries beyond the expected # of nearest neighbors...')
+	num_orb_per_atom = np.array([no_orbitals[int(index)-1] for index in LM[:, -1]])
+	H = clean_matrix(H, Smin, num_orb_per_atom)
+	S = clean_matrix(S, Smin, num_orb_per_atom)
 	
+	print(np.count_nonzero(H))
+	print(np.max(H))
+	print(np.min(H))
 	
+	print(np.count_nonzero(S))
+	print(np.max(S))
+	print(np.min(S))
 	
 	# Write binary files for the hamiltonian and overlap matrices
 
 	print('Finished pre-processing, matrices and input files are ready to use.')	
+
+if __name__ == '__main__':
+	main()
+	
 	
 	
 	
