@@ -7,11 +7,10 @@ log_energy.out
 structure.xyz
 
 # output files
-H.png
-lattice_dat
-LM_dat
-Smin_dat
+*.png
+*_dat
 *.dat
+*.bin
 
 # Python environment with all required packages loaded
 job_submission/

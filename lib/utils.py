@@ -61,10 +61,39 @@ def read_bin(binfile, struct_fmt='<IIIdI'):
 
 	return M
 
-def write_bin(binfile, struct_fmt='<IIIdI'):
+def write_mat_to_bin(binfile, M, struct_fmt='d'):
 	
-	pass
-
+	''' 
+	Writes a little endian binary file composed of the csr-representation of the input matrix
+	
+	Args:
+		1. (str) .bin file name which the output will be printed to
+		2. (*x* numpy array) a matrix which should be written to a file
+		2. (str) data type to use for binary conversions
+		
+	Returns:
+		None
+	'''
+		
+	#Find nonzero entries and indices and create a csr representation
+	indices = np.nonzero(M)
+	values = M[indices]
+	
+	# Format csr matrix, and change to 1-indexing
+	M_4 = np.column_stack((np.transpose(indices), values))
+	M_4 = M_4 + [1, 1, 0]
+		
+	# Write to bin file in order:	
+	with open(binfile, "wb") as f:
+		
+		# First line is some bookkeeping of the matrix sizes:
+		f.write(struct.pack('<ddd', np.shape(M)[0], np.shape(M_4)[1], 1))
+		
+		# Write to binary in the form (x-ind, y-ind, real(value), imag(value))
+		for nonzero_entry in M_4:
+			fmt = '<'+4*struct_fmt
+			f.write(struct.pack(fmt, nonzero_entry[0], nonzero_entry[1], nonzero_entry[2].real, nonzero_entry[2].imag))
+		
 
 def read_xyz(filename):
 	
@@ -95,7 +124,8 @@ def read_xyz(filename):
 	coords = np.asarray(coords, dtype=np.float64)
 	lattice = np.asarray(lattice, dtype=np.float64)
 	
-	return lattice, np.array(atoms), coords	
+	return lattice, np.array(atoms), coords		
+	
 	
 def bin_to_csr(M):
 

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
-from lib import utils as util
+from lib import utils
 
 
 def extract_basis_set(output_log):
@@ -317,32 +317,20 @@ def main():
 	
 	# Get atomic structure information:
 	atomic_kinds, no_orbitals = extract_basis_set(output_log='log_energy.out')
-	lattice, atoms, coords = util.read_xyz(xyz_file)
+	lattice, atoms, coords = utils.read_xyz(xyz_file)
 	num_orb_per_atom = np.array([int(no_orbitals[atomic_kinds.index(atom)]) for atom in atoms])
 	coords = np.column_stack((coords, np.array([int(atomic_kinds.index(atom))+1 for atom in atoms])))
 	print(f'found {len(atomic_kinds)} atomic kinds: {atomic_kinds}, with corresponding # orbitals: {no_orbitals}')
-	
-	# In case there is a pickle of the matrices, load and use that
-	#try:
-	#	H = np.load('Hamiltonian.dat', allow_pickle=True)
-	#	S = np.load('Overlap.dat', allow_pickle=True)
-	#	print('Loaded H and S from pickle')
-	#	
-	#except FileNotFoundError:
 		
 	# Get Kohn-Sham and Overlap matrices from bin files in index-value format
 	print('Reading binary files...')
-	H = util.read_bin(binfile=KS_file, struct_fmt='<IIIdI')
-	S = util.read_bin(binfile=S_file, struct_fmt='<IIIdI')
+	H = utils.read_bin(binfile=KS_file, struct_fmt='<IIIdI')
+	S = utils.read_bin(binfile=S_file, struct_fmt='<IIIdI')
 
 	# Convert to full matrices
 	hartree_to_eV = 27.2114
-	H = util.bin_to_csr(H)*hartree_to_eV
-	S = util.bin_to_csr(S)
-
-	# Pickle dump the raw matrices for faster re-run
-	#np.save('Hamiltonian_bin.dat', Kohn_Sham)
-	#np.save('Overlap_bin.dat', S)
+	H = utils.bin_to_csr(H)*hartree_to_eV
+	S = utils.bin_to_csr(S)
 		
 	# Create the device matrices by adding/removing contact blocks:
 	Hmax = np.amax(np.abs(H))
@@ -351,13 +339,17 @@ def main():
 	print('Building overlap matrix...')
 	S = create_device_matrix(S, coords, num_orb_per_atom, no_blocks, no_atoms_first_block, no_orbitals, delete_blocks, repeat_blocks, Hmax*eps*0.1)[0]
 	
-	print('Writing output files...')
+	print('Writing LM, lattice, Smin, E, and mat_par files...')
 	
 	# Print the LM_dat and lattice_dat files:
 	print_lattice_files(LM, atomic_kinds)
 	
 	# Print the Smin file (atomic index of the end of each block)
 	Smin = print_Smin_file(LM, no_blocks, no_atoms_first_block)
+	
+	# Print E_dat
+	
+	# Print mat_par
 	
 	# Checking the matrices for building errors:
 	get_warnings(H)
@@ -369,8 +361,9 @@ def main():
 	S = clean_matrix(S, Smin, num_orb_per_atom)	
 	
 	# Write binary files for the hamiltonian and overlap matrices
-	util.write_mat_to_bin('H_4.bin', H)
-	util.write_mat_to_bin('S_4.bin', H)
+	print('Writing Hamiltonian and Overlap matrices to .bin...')
+	utils.write_mat_to_bin('H_4.bin', H)
+	utils.write_mat_to_bin('S_4.bin', S)
 
 	print('Finished pre-processing, matrices and input files are ready to use.')	
 
