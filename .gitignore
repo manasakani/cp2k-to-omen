@@ -11,6 +11,7 @@ structure.xyz
 *_dat
 *.dat
 *.bin
+*_par
 
 # Python environment with all required packages loaded
 job_submission/

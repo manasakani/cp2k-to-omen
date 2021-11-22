@@ -4,9 +4,9 @@ import numpy as np
 from scipy import sparse
 
 
-def get_value_from_file(filename, keywords):
+def get_value_from_file(filename, keyword):
 	''' 
-	Reads the file given by filename, and finds the first number on every line where the keyword(s) is/are mentioned
+	Reads the file given by filename, and finds the first number on the last line where the keyword is mentioned
 	
 	Args:
 		1. A human-readable filename to search
@@ -14,18 +14,19 @@ def get_value_from_file(filename, keywords):
 	Returns:
 		1. The first number in every line which contains the keyword(s)
 	'''
-	
-	found_lines = []
-	
+		
 	# Look for the atomic kinds 
-	with open(output_log, 'r') as f:
+	with open(filename, 'r') as f:
 		for line in f:
 			if keyword in line:
 				for x in line.split():
-					if x.isdigit():
-						found_values.append(x)
+					try:
+						float(x)
+						found_value = float(x)
+					except ValueError:
+						continue
 				
-	return found_values
+	return found_value
 
 def read_bin(binfile, struct_fmt='<IIIdI'):
 	''' 

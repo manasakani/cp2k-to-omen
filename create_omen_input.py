@@ -314,13 +314,21 @@ def main():
 	xyz_file = 'structure.xyz'
 	KS_file = 'geoopt-KS_SPIN_1-1_0.csr'
 	S_file = 'geoopt-S_SPIN_1-1_0.csr'
+	output_log = 'log_energy.out'
+	
+	# Parameters:
+	hartree_to_eV = 27.2114
+	dE_outer = 10e-3
+	dE_inner = 2e-3
+	rE_outer = 5
+	rE_inner = 0.1
 	
 	# Get atomic structure information:
-	atomic_kinds, no_orbitals = extract_basis_set(output_log='log_energy.out')
+	atomic_kinds, no_orbitals = extract_basis_set(output_log)
 	lattice, atoms, coords = utils.read_xyz(xyz_file)
 	num_orb_per_atom = np.array([int(no_orbitals[atomic_kinds.index(atom)]) for atom in atoms])
 	coords = np.column_stack((coords, np.array([int(atomic_kinds.index(atom))+1 for atom in atoms])))
-	print(f'found {len(atomic_kinds)} atomic kinds: {atomic_kinds}, with corresponding # orbitals: {no_orbitals}')
+	print(f'found {len(atomic_kinds)} atomic kinds: {atomic_kinds}, with corresponding # orbitals: {no_orbitals}')\
 		
 	# Get Kohn-Sham and Overlap matrices from bin files in index-value format
 	print('Reading binary files...')
@@ -328,7 +336,6 @@ def main():
 	S = utils.read_bin(binfile=S_file, struct_fmt='<IIIdI')
 
 	# Convert to full matrices
-	hartree_to_eV = 27.2114
 	H = utils.bin_to_csr(H)*hartree_to_eV
 	S = utils.bin_to_csr(S)
 		
@@ -339,17 +346,30 @@ def main():
 	print('Building overlap matrix...')
 	S = create_device_matrix(S, coords, num_orb_per_atom, no_blocks, no_atoms_first_block, no_orbitals, delete_blocks, repeat_blocks, Hmax*eps*0.1)[0]
 	
+	
+	# Print text files:
 	print('Writing LM, lattice, Smin, E, and mat_par files...')
-	
-	# Print the LM_dat and lattice_dat files:
-	print_lattice_files(LM, atomic_kinds)
-	
-	# Print the Smin file (atomic index of the end of each block)
+	print_lattice_files(LM, atomic_kinds)	
 	Smin = print_Smin_file(LM, no_blocks, no_atoms_first_block)
 	
-	# Print E_dat
+	Ef = utils.get_value_from_file(output_log, 'Fermi level')*hartree_to_eV
+	E_outer_low = np.arange(Ef-rE_outer, Ef-rE_inner+dE_outer, dE_outer)
+	E_inner = np.arange(Ef-rE_inner+dE_inner, Ef+rE_inner-dE_inner+dE_inner, dE_inner)
+	E_outer_high = np.arange(Ef+rE_inner, Ef+rE_outer, dE_outer)
+	E = np.concatenate((E_outer_low, E_inner, E_outer_high), axis=0)
 	
-	# Print mat_par
+	with open('E_dat', 'w') as f:
+		f.write('{}\n'.format(len(E)))
+		for energy_pt in E:
+			f.write('{}\n'.format(energy_pt))
+	
+	no_atoms = np.shape(atomic_kinds)[0]
+	with open('mat_par', 'w') as f:
+		f.write('{}\t{}\n'.format(int(np.ceil(no_atoms/2)), int(np.floor(no_atoms/2))))
+		f.write('{}\t{:.7f}\t{:.7f}\n'.format(0.001, Ef+1e-3, Ef))
+		for orbital in no_orbitals:
+			f.write(str(orbital)+' ')
+	f.close()
 	
 	# Checking the matrices for building errors:
 	get_warnings(H)
@@ -364,6 +384,8 @@ def main():
 	print('Writing Hamiltonian and Overlap matrices to .bin...')
 	utils.write_mat_to_bin('H_4.bin', H)
 	utils.write_mat_to_bin('S_4.bin', S)
+	
+	# Preparing cmd file
 
 	print('Finished pre-processing, matrices and input files are ready to use.')	
 
