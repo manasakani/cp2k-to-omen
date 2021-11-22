@@ -61,6 +61,10 @@ def read_bin(binfile, struct_fmt='<IIIdI'):
 
 	return M
 
+def write_bin(binfile, struct_fmt='<IIIdI'):
+	
+	pass
+
 
 def read_xyz(filename):
 	

@@ -195,6 +195,7 @@ def print_lattice_files(LM, atomic_kinds):
 
 	with open('lattice_dat', 'w') as filehandle:
 		# @Manasa: Add the cell size and the # atoms at the top
+		filehandle.write('{}\t{}\t{}\t{}\t{}\n\n'.format(np.shape(LM)[1], np.shape(atomic_kinds)[0], 0, 0, 0))
 		for atom, row in zip(atom_names, lattice):
 			filehandle.write('{}\t{:.7f}\t{:.7f}\t{:.7f}\n'.format(atom, row[0], row[1], row[2]))
 			
@@ -275,9 +276,7 @@ def clean_matrix(M, Smin, num_orb_per_atom):
 	nn = int(neigh[0, 0])
 	
 	for ii in range(np.shape(neigh)[1] - nn):
-		print(ii)
 		for jj in range(ii+nn+1, np.shape(neigh)[1]):
-			print(jj)
 			if np.count_nonzero(M[blocks[ii]:blocks[ii+1], blocks[jj]:blocks[jj+1]]) > 0:
 				M[blocks[ii]:blocks[ii+1], blocks[jj]:blocks[jj+1]] = 0
 				M[blocks[jj]:blocks[jj+1], blocks[ii]:blocks[ii+1]] = 0	
@@ -325,7 +324,6 @@ def main():
 	S = util.read_bin(binfile=S_file, struct_fmt='<IIIdI')
 
 	# Convert to full matrices
-	print('Converting from csr to matrix representation...')
 	hartree_to_eV = 27.2114
 	H = util.bin_to_csr(H)*hartree_to_eV
 	S = util.bin_to_csr(S)
@@ -358,13 +356,8 @@ def main():
 	H = clean_matrix(H, Smin, num_orb_per_atom)
 	S = clean_matrix(S, Smin, num_orb_per_atom)
 	
-	print(np.count_nonzero(H))
-	print(np.max(H))
-	print(np.min(H))
+	# this is a comment
 	
-	print(np.count_nonzero(S))
-	print(np.max(S))
-	print(np.min(S))
 	
 	# Write binary files for the hamiltonian and overlap matrices
 
