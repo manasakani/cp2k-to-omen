@@ -386,22 +386,29 @@ def main():
 	
 	# Write binary files for the hamiltonian and overlap matrices
 	print('Writing Hamiltonian and Overlap matrices to .bin...')
-	utils.write_mat_to_bin('H_4.bin', H)
-	utils.write_mat_to_bin('S_4.bin', S)
+	#utils.write_mat_to_bin('H_4.bin', H)
+	#utils.write_mat_to_bin('S_4.bin', S)
 	
 	#add this
 	#dimensions = [min(LM_dat(:,1:3),[],1)' max(LM_dat(:,1:3),[],1)']/10;
+	dimensions_min = np.min(LM[:, :3], axis =0)/10
+	dimensions_max = np.max(LM[:, :3], axis =0)/10
 	
 	# Making the cmd input file
-	shutil.copyfile('/home/mkaniselvan/Documents/ScriptLibrary/Input_Templates/omen/omen.cmd', 'omen.cmd')
-	
+	shutil.copyfile(os.getcwd()+'/lib/input_templates/omen.cmd', 'omen.cmd')
+		
+	#@Manasa: Ask Fabian what this '-6' is
 	update_cmd = {
-	'fermi_level': 'fermi_level \t\t = '+ str(Ef) + ';',
-	'Vdmin': 'Vdmin \t\t = '+ str(Vd) + ';',
-	'Vdmax': 'Vdmax \t\t = '+ str(Vd) + ';',
-	'restart': 'restart \t\t = [2 0 0 0]' + ';',
-	'vact_file': 'vact_file \t\t = vact_dat' + ';',
-		notfinishedyet
+	'fermi_level': 'fermi_level \t\t = '+ str(Ef) + ';\n',
+	'Vdmin': 'Vdmin \t\t\t = '+ str(Vd) + ';\n',
+	'Vdmax': 'Vdmax \t\t\t = '+ str(Vd) + ';\n',
+	'restart': 'restart \t\t\t = [2 0 0 0]' + ';\n',
+	'vact_file': 'vact_file \t\t\t = vact_dat' + ';\n',
+	'Lc\t\t': 'Lc \t\t\t = '+ str(dimensions_max[0]-6+1e-3) + ';\n',
+	'tc\t\t': 'tc \t\t\t = '+ str(dimensions_max[1]+1e-3) + ';\n',
+	'hc\t\t': 'hc \t\t\t = '+ str(dimensions_max[2]+1e-3) + ';\n',
+	'x0\t\t': 'x0 \t\t\t = '+ str(dimensions_min[1]-1e-3) + ';\n',
+	'z0\t\t': 'z0 \t\t\t = '+ str(dimensions_min[2]-1e-3) + ';\n',
 	}
 	utils.replace_line('omen.cmd', update_cmd)
 

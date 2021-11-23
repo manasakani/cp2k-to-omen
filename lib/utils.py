@@ -6,7 +6,8 @@ from scipy import sparse
 
 def get_value_from_file(filename, keyword):
 	''' 
-	Reads the file given by filename, and finds the first number on the last line where the keyword is mentioned
+	Reads the file given by filename, and finds the first number on the last line where the keyword is mentioned.
+	Useful for output log files for specific values.
 	
 	Args:
 		1. A human-readable filename to search
@@ -33,7 +34,8 @@ def replace_line(path_to_file, lines_to_replace):
 	
 	Args:
 		1. file name
-		2. dictionary of keyword:replace pairs
+		2. dictionary of keyword:replacement_line pairs. The keyword should be unique
+		in the specified file, and the line which contains it will be replaced by the replacement_line pair
 
 	'''
 		

@@ -69,38 +69,6 @@ def coord_to_xyz(filename):
 		f.write(str(x[0])+'\t'+str(x[1][0])+'\t'+str(x[1][1])+'\t'+str(x[1][2])+'\n')
 	f.close()
 
-def read_xyz(filename):
-	
-	''' 
-	Reads data from xyz files
-	
-	Args:
-		1. filename as '*.xyz'
-		
-	Returns:
-		1. A (1x3) numpy array containing the (rectangular) unit cell size
-		2. A list containing the atom symbols
-		3. A (*x3) numpy array containing the atomic coordinates
-	'''
-	 
-	atoms = []
-	coords = []
-	 
-	with open(filename , "rt") as myfile:
-		for line in myfile:
-			if len(line.split()) == 1:
-				pass
-			elif line.split()[0] in ['Cell:', 'cell:']:
-				lattice = line.split()[1:4]
-			else:
-				atoms.append(line.split()[0])
-				coords.append(line.split()[1:])
-	coords = np.asarray(coords, dtype=np.float64)
-	lattice = np.asarray(lattice, dtype=np.float64)
-	
-	return np.array(lattice), np.array(atoms), np.array(coords)	
-	
-
 def write_xyz(lattice, coords, filename):
 	
 	''' 
