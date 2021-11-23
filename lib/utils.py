@@ -38,16 +38,14 @@ def replace_line(path_to_file, lines_to_replace):
 	'''
 		
 	with open(path_to_file, 'r') as f:
-		contents = f.readlines()
+		lines = f.readlines()
 				
 	for keyword, entry in lines_to_replace.items():
-		for line in contents:
-			if keyword in line: 
-				location = contents.index(line)
-				contents[location] = keyword+' \t\t = '+ str(entry) + ';\n'
+		lines = [str(entry) if keyword in line else line for line in lines]
 			
 	with open(path_to_file, 'w') as f:
-		f.writelines(contents)
+		f.writelines(lines)
+
 
 def read_bin(binfile, struct_fmt='<IIIdI'):
 	''' 

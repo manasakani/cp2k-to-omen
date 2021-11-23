@@ -6,10 +6,10 @@
 #SBATCH --mail-type=BEGIN
 #SBATCH --mail-type=END
 #SBATCH --account=s1119
-#SBATCH --job-name=HfO2_formed
+#SBATCH --job-name=HfO2
 #SBATCH --time=4:30:00
-#SBATCH --nodes=32
-#SBATCH --ntasks-per-node=6
+#SBATCH --nodes=12
+#SBATCH --ntasks-per-node=12
 #SBATCH --cpus-per-task=2
 #SBATCH --constraint=gpu
 

@@ -1,4 +1,5 @@
 import os
+import shutil
 import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
@@ -384,21 +385,25 @@ def main():
 	S = clean_matrix(S, Smin, num_orb_per_atom)	
 	
 	# Write binary files for the hamiltonian and overlap matrices
-	#print('Writing Hamiltonian and Overlap matrices to .bin...')
-	#utils.write_mat_to_bin('H_4.bin', H)
-	#utils.write_mat_to_bin('S_4.bin', S)
+	print('Writing Hamiltonian and Overlap matrices to .bin...')
+	utils.write_mat_to_bin('H_4.bin', H)
+	utils.write_mat_to_bin('S_4.bin', S)
 	
-	# Preparing cmd file
+	#add this
+	#dimensions = [min(LM_dat(:,1:3),[],1)' max(LM_dat(:,1:3),[],1)']/10;
+	
+	# Making the cmd input file
+	shutil.copyfile('/home/mkaniselvan/Documents/ScriptLibrary/Input_Templates/omen/omen.cmd', 'omen.cmd')
+	
 	update_cmd = {
-	'fermi_level': Ef,
-	'Vdmin': Vd,
-	'Vdmax': Vd,
-	'restart': '[2 0 0 0]',
-	'vact_file': 'vact_dat'
+	'fermi_level': 'fermi_level \t\t = '+ str(Ef) + ';',
+	'Vdmin': 'Vdmin \t\t = '+ str(Vd) + ';',
+	'Vdmax': 'Vdmax \t\t = '+ str(Vd) + ';',
+	'restart': 'restart \t\t = [2 0 0 0]' + ';',
+	'vact_file': 'vact_file \t\t = vact_dat' + ';',
+		notfinishedyet
 	}
-	
-	path_to_cmd = os.getcwd()+'/lib/omen.cmd'
-	utils.replace_line(path_to_cmd, update_cmd)
+	utils.replace_line('omen.cmd', update_cmd)
 
 	print('Finished pre-processing, matrices and input files are ready to use.')	
 

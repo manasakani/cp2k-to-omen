@@ -1,0 +1,213 @@
+@SET hf_potential GTH-PBE-q12
+@SET hf_basis_set SZV-MOLOPT-SR-GTH
+
+@SET ti_potential GTH-PBE-q12
+@SET ti_basis_set SZV-MOLOPT-SR-GTH
+
+@SET n_potential GTH-PBE-q5
+@SET n_basis_set SZV-MOLOPT-SR-GTH
+
+@SET o_potential GTH-PBE-q6
+@SET o_basis_set SZV-MOLOPT-SR-GTH
+@SET print_step 1
+@SET daint 1
+
+&GLOBAL
+  PROJECT geoopt
+  RUN_TYPE ENERGY
+  PRINT_LEVEL MEDIUM
+  EXTENDED_FFT_LENGTHS
+@IF ${daint}
+# limit the run time [s]
+  WALLTIME 15000
+@ENDIF
+  &FM
+    FORCE_BLOCK_SIZE
+    TYPE_OF_MATRIX_MULTIPLICATION DBCSR_MM
+  &END FM
+&END GLOBAL
+
+&FORCE_EVAL
+  METHOD Quickstep
+  STRESS_TENSOR ANALYTICAL
+  &SUBSYS
+    &CELL
+	ABC  92.6711 16.737 16.373
+      SYMMETRY ORTHORHOMBIC
+    &END CELL
+    &KIND Hf
+      BASIS_SET ${hf_basis_set}
+      ELEMENT Hf
+      POTENTIAL ${hf_potential}
+    &END KIND
+    &KIND O
+      BASIS_SET ${o_basis_set}
+      ELEMENT O
+      POTENTIAL ${o_potential}
+    &END KIND
+    &KIND V
+      BASIS_SET ${o_basis_set}
+      ELEMENT O
+      POTENTIAL ${o_potential}
+      GHOST
+    &END KIND
+    &KIND Ti
+      BASIS_SET ${ti_basis_set}
+      ELEMENT Ti
+      POTENTIAL ${ti_potential}
+    &END KIND
+    &KIND N
+      BASIS_SET ${n_basis_set}
+      ELEMENT N
+      POTENTIAL ${n_potential}
+    &END KIND
+    &TOPOLOGY
+      COORD_FILE_NAME structure.xyz
+      COORD_FILE_FORMAT XYZ
+    &END TOPOLOGY
+  &END SUBSYS
+  &DFT
+    POTENTIAL_FILE_NAME /scratch/snx3000/mkanisel/CP2K_BasisSets/POTENTIALS
+    BASIS_SET_FILE_NAME /scratch/snx3000/mkanisel/CP2K_BasisSets/BASIS_ZIJLSTRA
+    BASIS_SET_FILE_NAME /scratch/snx3000/mkanisel/CP2K_BasisSets/BASIS_MOLOPT
+    CHARGE 0
+    &QS
+      METHOD GPW
+      EPS_DEFAULT 1.0E-12
+      EXTRAPOLATION PS
+#      PURGE_FREQ 7
+    &END QS
+    &MGRID
+      NGRIDS 5
+      CUTOFF 500
+      REL_CUTOFF 60
+    &END MGRID
+    &XC
+      &XC_FUNCTIONAL PBE
+      &END XC_FUNCTIONAL
+    &END XC
+    &PRINT
+      &KS_CSR_WRITE
+        THRESHOLD 1e-7
+        UPPER_TRIANGULAR
+	BINARY
+      &END KS_CSR_WRITE
+      &S_CSR_WRITE
+        THRESHOLD 1e-7
+        UPPER_TRIANGULAR
+	BINARY
+      &END S_CSR_WRITE
+      &ENERGY_WINDOWS
+        RESTRICT_RANGE
+        RANGE 0.0001
+        N_WINDOWS 1   # for faster output
+#        N_WINDOWS 200
+      &END ENERGY_WINDOWS
+      #&HIRSHFELD
+      #   FILENAME chg
+      #   SHAPE_FUNCTION DENSITY
+      #&END HIRSHFELD
+      #&MULLIKEN
+      #  FILENAME chg
+      #&END MULLIKEN
+    &END PRINT
+    #WFN_RESTART_FILE_NAME geoopt-RESTART.wfn
+    &SCF
+      &PRINT
+        &RESTART_HISTORY OFF
+        &END RESTART_HISTORY
+        &RESTART
+          BACKUP_COPIES 1
+        &END RESTART
+      &END PRINT
+      SCF_GUESS ATOMIC
+      EPS_SCF 1.0E-7
+      MAX_SCF 200
+      CHOLESKY INVERSE_DBCSR
+      #&OT
+      #  PRECONDITIONER FULL_SINGLE_INVERSE
+      #  ENERGY_GAP 0.2
+      #  ALGORITHM IRAC
+      #  MINIMIZER DIIS
+      #&END OT
+      #&OUTER_SCF
+      #   EPS_SCF 1.0E-7
+      #   MAX_SCF 30
+      #&END OUTER_SCF
+      ADDED_MOS 1000
+      &SMEAR ON
+         METHOD FERMI_DIRAC
+         ELECTRONIC_TEMPERATURE 300
+      &END SMEAR
+    &END SCF
+   # &PRINT
+   #   &HIRSHFELD
+   #     FILENAME chg
+   #     SHAPE_FUNCTION DENSITY
+   #   &END HIRSHFELD
+   #   &MULLIKEN
+   #     FILENAME chg
+   #   &END MULLIKEN
+   # &END PRINT
+  &END DFT
+&END FORCE_EVAL
+
+&MOTION
+  &GEO_OPT
+    OPTIMIZER BFGS
+    MAX_ITER 20
+    &BFGS
+    &END BFGS
+  &END GEO_OPT
+  #&CONSTRAINT
+  #  &FIXED_ATOMS
+  #    LIST 1..168
+  #  &END FIXED_ATOMS
+  #&END CONSTRAINT
+  &PRINT
+    &TRAJECTORY
+      &EACH
+        CELL_OPT ${print_step}
+        GEO_OPT ${print_step}
+        MD ${print_step}
+      &END EACH
+    &END TRAJECTORY
+    &CELL
+      &EACH
+        CELL_OPT ${print_step}
+        GEO_OPT ${print_step}
+        MD ${print_step}
+      &END EACH
+    &END CELL
+    &FORCES
+      &EACH
+        CELL_OPT ${print_step}
+        GEO_OPT ${print_step}
+        MD ${print_step}
+      &END EACH
+    &END FORCES
+      &STRESS
+        FILENAME 
+        &EACH
+          CELL_OPT ${print_step}
+          GEO_OPT ${print_step}
+          MD ${print_step}
+        &END EACH
+      &END STRESS
+    &RESTART_HISTORY OFF
+    &END RESTART_HISTORY
+    &RESTART
+      BACKUP_COPIES 1
+      &EACH
+        CELL_OPT ${print_step}
+        GEO_OPT ${print_step}
+        MD ${print_step}
+      &END EACH
+    &END RESTART
+  &END PRINT
+&END MOTION
+
+#&EXT_RESTART
+#   RESTART_FILE_NAME geoopt-1.restart
+#&END EXT_RESTART
+
