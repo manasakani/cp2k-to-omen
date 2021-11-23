@@ -50,7 +50,8 @@ def push_folder_to_remote(source_folder, remote_location, outbound_files, client
 	Inputs: 
 		1. Path of local folder which should be uploaded
 		2. Location on the server that the folder should be placed in
-		3. A paramiko client for the server, upon which sftp commands can be used.
+		3. Files which should be moved
+		4. A paramiko client for the server, upon which sftp commands can be used.
 		
 	Outputs:
 		(none)
@@ -61,10 +62,30 @@ def push_folder_to_remote(source_folder, remote_location, outbound_files, client
 		sftp.chdir(remote_location)
 	except IOError:
 		sftp.mkdir(remote_location)
-	for file in outbound_files :
-		filepath = source_folder+'/'+file
-		moveto = remote_location +'/'+file
+	for files in outbound_files :
+		filepath = source_folder+'/'+files
+		moveto = remote_location +'/'+files
 		sftp.put(filepath, moveto)
+	sftp.close()
+	
+def push_file_to_remote(remote_location, outbound_file, client):
+	
+	''' 
+	Uploads a specified file to the remote location specified by the client
+	
+	Inputs: 
+		1. Location on the server that the folder should be placed in
+		2. Name of file to move
+		3. A paramiko client for the server, upon which sftp commands can be used.
+		
+	Outputs:
+		(none)
+	'''
+	
+	sftp = client.open_sftp()
+	#filepath = source_folder+'/'+file
+	moveto = remote_location +'/'+outbound_file
+	sftp.put(outbound_file, moveto)
 	sftp.close()
 
 def pull_folder_from_remote(remote_location, dest_folder, inbound_files, client):
@@ -83,11 +104,12 @@ def pull_folder_from_remote(remote_location, dest_folder, inbound_files, client)
 	'''
 	
 	sftp = client.open_sftp()
-	for file in inbound_files:
-		filepath = remote_location+'/'+file
-		moveto = dest_folder +'/'+file
+	for files in inbound_files:
+		filepath = remote_location+'/'+files
+		moveto = dest_folder +'/'+files
 		sftp.get(filepath, moveto)
 	sftp.close()
+	
 		
 def remote_command(client, cmd):
 	

@@ -1,5 +1,7 @@
 import os
 import shutil
+import time
+import json
 import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
@@ -239,6 +241,36 @@ def print_Smin_file(LM, no_blocks, no_atoms_first_block):
 			
 	return Smin
 	
+def print_E_file(Ef, dE_outer, dE_inner, rE_outer, rE_inner):
+	''' 
+	Internal. Prints the E_dat file (energy)
+	
+	''' 
+	E_outer_low = np.arange(Ef-rE_outer, Ef-rE_inner+dE_outer, dE_outer)
+	E_inner = np.arange(Ef-rE_inner+dE_inner, Ef+rE_inner-dE_inner+dE_inner, dE_inner)
+	E_outer_high = np.arange(Ef+rE_inner, Ef+rE_outer, dE_outer)
+	E = np.concatenate((E_outer_low, E_inner, E_outer_high), axis=0)
+	
+	with open('E_dat', 'w') as f:
+		f.write('{}\n'.format(len(E)))
+		for energy_pt in E:
+			f.write('{}\n'.format(energy_pt))
+	
+
+def print_matpar_file(atomic_kinds, no_orbitals, Ef):
+	''' 
+	Internal. Prints the mar_par file
+		
+	'''  
+	no_atoms = np.shape(atomic_kinds)[0]
+	with open('mat_par', 'w') as f:
+		f.write('{}\t{}\n'.format(int(np.ceil(no_atoms/2)), int(np.floor(no_atoms/2))))
+		f.write('{}\t{:.7f}\t{:.7f}\n'.format(0.001, Ef+1e-3, Ef))
+		for orbital in no_orbitals:
+			f.write(str(orbital)+' ')
+	f.close()
+
+
 def get_warnings(M):
 	
 	''' 
@@ -307,6 +339,8 @@ def main():
 	
 	print('**************** Making inputs for OMEN ********************')
 	
+	t0 = time.time()
+	
 	# Input dictionary entries (@Manasa: put this in a json later)
 	no_blocks = [5, 4, 5]
 	no_atoms_first_block = [128, 128]
@@ -334,21 +368,21 @@ def main():
 	print(f'found {len(atomic_kinds)} atomic kinds: {atomic_kinds}, with corresponding # orbitals: {no_orbitals}')\
 		
 	# Get Kohn-Sham and Overlap matrices from bin files in index-value format
-	print('Reading binary files...')
 	H = utils.read_bin(binfile=KS_file, struct_fmt='<IIIdI')
 	S = utils.read_bin(binfile=S_file, struct_fmt='<IIIdI')
-
+	t1 = time.time()
+	print('Read binary files in '+str(t1-t0)+' s')
+	
 	# Convert to full matrices
 	H = utils.bin_to_csr(H)*hartree_to_eV
 	S = utils.bin_to_csr(S)
 		
 	# Create the device matrices by adding/removing contact blocks:
 	Hmax = np.amax(np.abs(H))
-	print('Building hamiltonian...')
 	H, LM = create_device_matrix(H, coords, num_orb_per_atom, no_blocks, no_atoms_first_block, no_orbitals, delete_blocks, repeat_blocks, Hmax*eps)
-	print('Building overlap matrix...')
 	S = create_device_matrix(S, coords, num_orb_per_atom, no_blocks, no_atoms_first_block, no_orbitals, delete_blocks, repeat_blocks, Hmax*eps*0.1)[0]
-	
+	t2 = time.time()
+	print('Built Hamiltonian and overlap matrices in '+str(t2-t1)+' s')
 	
 	# Print text files:
 	print('Writing LM, lattice, Smin, E, and mat_par files...')
@@ -357,23 +391,9 @@ def main():
 	Smin = print_Smin_file(LM, no_blocks, no_atoms_first_block)
 	
 	Ef = utils.get_value_from_file(output_log, 'Fermi level')*hartree_to_eV
-	E_outer_low = np.arange(Ef-rE_outer, Ef-rE_inner+dE_outer, dE_outer)
-	E_inner = np.arange(Ef-rE_inner+dE_inner, Ef+rE_inner-dE_inner+dE_inner, dE_inner)
-	E_outer_high = np.arange(Ef+rE_inner, Ef+rE_outer, dE_outer)
-	E = np.concatenate((E_outer_low, E_inner, E_outer_high), axis=0)
+	print_E_file(Ef, dE_outer, dE_inner, rE_outer, rE_inner)
 	
-	with open('E_dat', 'w') as f:
-		f.write('{}\n'.format(len(E)))
-		for energy_pt in E:
-			f.write('{}\n'.format(energy_pt))
-	
-	no_atoms = np.shape(atomic_kinds)[0]
-	with open('mat_par', 'w') as f:
-		f.write('{}\t{}\n'.format(int(np.ceil(no_atoms/2)), int(np.floor(no_atoms/2))))
-		f.write('{}\t{:.7f}\t{:.7f}\n'.format(0.001, Ef+1e-3, Ef))
-		for orbital in no_orbitals:
-			f.write(str(orbital)+' ')
-	f.close()
+	print_matpar_file(atomic_kinds, no_orbitals, Ef)
 	
 	# Checking the matrices for building errors:
 	get_warnings(H)
@@ -388,31 +408,37 @@ def main():
 	print('Writing Hamiltonian and Overlap matrices to .bin...')
 	#utils.write_mat_to_bin('H_4.bin', H)
 	#utils.write_mat_to_bin('S_4.bin', S)
+	t3 = time.time()
+	print('Binary files written, '+str(t3-t2)+' s')
 	
-	#add this
-	#dimensions = [min(LM_dat(:,1:3),[],1)' max(LM_dat(:,1:3),[],1)']/10;
+	# Load the command file dictionary and modify it
 	dimensions_min = np.min(LM[:, :3], axis =0)/10
 	dimensions_max = np.max(LM[:, :3], axis =0)/10
-	
-	# Making the cmd input file
-	shutil.copyfile(os.getcwd()+'/lib/input_templates/omen.cmd', 'omen.cmd')
-		
+	with open(os.getcwd()+'/lib/input_templates/omen_cmd.json') as cmd_json_file:
+		omen_cmds = json.load(cmd_json_file)
+			
 	#@Manasa: Ask Fabian what this '-6' is
-	update_cmd = {
-	'fermi_level': 'fermi_level \t\t = '+ str(Ef) + ';\n',
-	'Vdmin': 'Vdmin \t\t\t = '+ str(Vd) + ';\n',
-	'Vdmax': 'Vdmax \t\t\t = '+ str(Vd) + ';\n',
-	'restart': 'restart \t\t\t = [2 0 0 0]' + ';\n',
-	'vact_file': 'vact_file \t\t\t = vact_dat' + ';\n',
-	'Lc\t\t': 'Lc \t\t\t = '+ str(dimensions_max[0]-6+1e-3) + ';\n',
-	'tc\t\t': 'tc \t\t\t = '+ str(dimensions_max[1]+1e-3) + ';\n',
-	'hc\t\t': 'hc \t\t\t = '+ str(dimensions_max[2]+1e-3) + ';\n',
-	'x0\t\t': 'x0 \t\t\t = '+ str(dimensions_min[1]-1e-3) + ';\n',
-	'z0\t\t': 'z0 \t\t\t = '+ str(dimensions_min[2]-1e-3) + ';\n',
-	}
-	utils.replace_line('omen.cmd', update_cmd)
-
-	print('Finished pre-processing, matrices and input files are ready to use.')	
+	omen_cmds.update({
+	"fermi_level": Ef,
+	"Vdmin": Vd,
+	"Vdmax": Vd,
+	"restart": [2, 0, 0, 0],
+	"vact_file": 'vact_dat',
+	"Lc": dimensions_max[0]-6+1e-3,
+	"tc": dimensions_max[1]+1e-3,
+	"hc": dimensions_max[2]+1e-3,
+	"x0": dimensions_min[1]-1e-3,
+	"z0": dimensions_min[2]-1e-3})
+	utils.dump_dict_plaintext('omen.cmd', omen_cmds, 'C')
+	
+	# Edit job script:
+	with open(os.getcwd()+'/lib/input_templates/run_transport_sh.json') as job_json_file:
+		jobfile = json.load(job_json_file)
+	utils.dump_dict_plaintext('run_transport.sh', jobfile, 'bash')
+	
+	t4 = time.time()
+	print('Finished pre-processing. Matrices and input files are ready to use.')
+	print('Total runtime '+str(t4-t0)+' s')	
 
 if __name__ == '__main__':
 	main()

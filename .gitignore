@@ -18,3 +18,7 @@ job_submission/
 
 # All the pyc files
 *.pyc
+
+# OMEN
+OMEN_Daint_gnu64-XC50
+*.sh

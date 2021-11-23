@@ -179,3 +179,26 @@ def bin_to_csr(M):
 	#Note: Save as upper triangular matrix later
 	
 	return N
+
+def dump_dict_plaintext(filename, dictionary, filetype='C'):
+	'''
+	Writes a dictionary to a plaintext file with each key-value pair seperated by a '='
+	
+	'''
+	
+	with open(filename, 'w') as f:
+		
+		if filetype == 'C':
+			for field, value in dictionary.items():
+				f.write(str(field)+'\t\t\t = '+str(value)+';\n')
+		if filetype == 'bash':
+			f.write('#!/bin/bash --login \n')
+			for field, value in dictionary.items():
+				f.write('#SBATCH --'+str(field)+'='+str(value)+'\n')
+			f.write('\n')
+			f.write('export OMP_NUM_THREADS=1\n')
+			f.write('export CRAY_CUDA_MPS=1\n')
+			f.write('module load daint-gpu\n')
+			f.write('\n')
+			f.write('srun -n $SLURM_NTASKS OMEN_Daint_gnu64-XC50 omen.cmd > omen_output.out')
+	

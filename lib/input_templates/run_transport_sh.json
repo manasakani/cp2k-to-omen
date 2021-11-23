@@ -1,0 +1,14 @@
+{
+	"account": "s1119",
+	"mail-user": "<mkaniselvan@iis.ee.ethz.ch>",
+	"mail-type ": "BEGIN",
+	"mail-type": "END",
+	"ntasks": 320,
+	"ntasks-per-node": 10,
+	"cpus-per-task": 1,
+	"constraint": "gpu",
+	"time": "01:00:00",
+	"job-name": "'negf'"
+}
+
+
