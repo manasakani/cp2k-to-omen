@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
@@ -322,6 +323,7 @@ def main():
 	dE_inner = 2e-3
 	rE_outer = 5
 	rE_inner = 0.1
+	Vd = 0.5
 	
 	# Get atomic structure information:
 	atomic_kinds, no_orbitals = extract_basis_set(output_log)
@@ -350,6 +352,7 @@ def main():
 	# Print text files:
 	print('Writing LM, lattice, Smin, E, and mat_par files...')
 	print_lattice_files(LM, atomic_kinds)	
+	
 	Smin = print_Smin_file(LM, no_blocks, no_atoms_first_block)
 	
 	Ef = utils.get_value_from_file(output_log, 'Fermi level')*hartree_to_eV
@@ -381,11 +384,21 @@ def main():
 	S = clean_matrix(S, Smin, num_orb_per_atom)	
 	
 	# Write binary files for the hamiltonian and overlap matrices
-	print('Writing Hamiltonian and Overlap matrices to .bin...')
-	utils.write_mat_to_bin('H_4.bin', H)
-	utils.write_mat_to_bin('S_4.bin', S)
+	#print('Writing Hamiltonian and Overlap matrices to .bin...')
+	#utils.write_mat_to_bin('H_4.bin', H)
+	#utils.write_mat_to_bin('S_4.bin', S)
 	
 	# Preparing cmd file
+	update_cmd = {
+	'fermi_level': Ef,
+	'Vdmin': Vd,
+	'Vdmax': Vd,
+	'restart': '[2 0 0 0]',
+	'vact_file': 'vact_dat'
+	}
+	
+	path_to_cmd = os.getcwd()+'/lib/omen.cmd'
+	utils.replace_line(path_to_cmd, update_cmd)
 
 	print('Finished pre-processing, matrices and input files are ready to use.')	
 

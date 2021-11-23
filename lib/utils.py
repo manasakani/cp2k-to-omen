@@ -28,6 +28,27 @@ def get_value_from_file(filename, keyword):
 				
 	return found_value
 
+def replace_line(path_to_file, lines_to_replace):
+	'''
+	
+	Args:
+		1. file name
+		2. dictionary of keyword:replace pairs
+
+	'''
+		
+	with open(path_to_file, 'r') as f:
+		contents = f.readlines()
+				
+	for keyword, entry in lines_to_replace.items():
+		for line in contents:
+			if keyword in line: 
+				location = contents.index(line)
+				contents[location] = keyword+' \t\t = '+ str(entry) + ';\n'
+			
+	with open(path_to_file, 'w') as f:
+		f.writelines(contents)
+
 def read_bin(binfile, struct_fmt='<IIIdI'):
 	''' 
 	Reads the .bin files produced by cp2k for the KS and S matrices
