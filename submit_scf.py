@@ -57,8 +57,8 @@ def main(folder, base_structure_location=os.getcwd()):
 	
 	
 	# Get the energy.inp and job submission scripts from the lib folder
-	shutil.copyfile(os.getcwd()+'/lib/input_templates/energy.inp', sim_path+'/energy.inp')
-	shutil.copyfile(os.getcwd()+'/lib/input_templates/run_energy.sh', sim_path+'/run_energy.sh')
+	shutil.copyfile('/home/mkaniselvan/Documents/ScriptLibrary/omen_preprocessing/lib/input_templates/energy.inp', sim_path+'/energy.inp')
+	shutil.copyfile('/home/mkaniselvan/Documents/ScriptLibrary/omen_preprocessing/lib/input_templates/run_energy.sh', sim_path+'/run_energy.sh')
 	
 	# Make sure the energy.inp scf input is consistent with the structure.xyz file provided
 	f = open(sim_path+'structure.xyz', 'r')
