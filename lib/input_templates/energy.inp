@@ -7,8 +7,12 @@
 @SET n_potential GTH-PBE-q5
 @SET n_basis_set SZV-MOLOPT-SR-GTH
 
+@SET au_basis_set SZV-MOLOPT-SR-GTH
+@SET au_potential GTH-PBE-q11
+
 @SET o_potential GTH-PBE-q6
 @SET o_basis_set SZV-MOLOPT-SR-GTH
+
 @SET print_step 1
 @SET daint 1
 
@@ -32,7 +36,7 @@
   STRESS_TENSOR ANALYTICAL
   &SUBSYS
     &CELL
-	ABC  92.6711 16.737 16.373
+      ABC 92.6711 16.737 16.373
       SYMMETRY ORTHORHOMBIC
     &END CELL
     &KIND Hf
@@ -110,6 +114,9 @@
       #&MULLIKEN
       #  FILENAME chg
       #&END MULLIKEN
+      # &V_HARTREE_CUBE
+      #  FILENAME pot.cube
+      #&END V_HARTREE_CUBE
     &END PRINT
     #WFN_RESTART_FILE_NAME geoopt-RESTART.wfn
     &SCF
@@ -122,23 +129,18 @@
       &END PRINT
       SCF_GUESS ATOMIC
       EPS_SCF 1.0E-7
-      MAX_SCF 200
+      MAX_SCF 40
       CHOLESKY INVERSE_DBCSR
-      #&OT
-      #  PRECONDITIONER FULL_SINGLE_INVERSE
-      #  ENERGY_GAP 0.2
-      #  ALGORITHM IRAC
-      #  MINIMIZER DIIS
-      #&END OT
-      #&OUTER_SCF
-      #   EPS_SCF 1.0E-7
-      #   MAX_SCF 30
-      #&END OUTER_SCF
-      ADDED_MOS 1000
-      &SMEAR ON
-         METHOD FERMI_DIRAC
-         ELECTRONIC_TEMPERATURE 300
-      &END SMEAR
+      &OT
+        PRECONDITIONER FULL_SINGLE_INVERSE
+        ENERGY_GAP 0.2
+        ALGORITHM IRAC
+        MINIMIZER DIIS
+      &END OT
+      &OUTER_SCF
+         EPS_SCF 1.0E-7
+         MAX_SCF 30
+      &END OUTER_SCF
     &END SCF
    # &PRINT
    #   &HIRSHFELD
