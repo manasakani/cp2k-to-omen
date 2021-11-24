@@ -1,11 +1,15 @@
 import os
-import shutil
 import time
 import json
 import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
 from lib import utils
+from lib import input_decorators as check
+
+#Load the User Inputs
+with open('user_inputs.json') as filehandle:
+		user_inputs = json.load(filehandle)
 
 
 def extract_basis_set(output_log):
@@ -229,10 +233,23 @@ def print_Smin_file(LM, no_blocks, no_atoms_first_block):
 	num_channel_atoms = num_atoms - num_left_contact_atoms - num_right_contact_atoms
 	channel_atoms_per_block = num_channel_atoms/no_blocks[1]
 	
-	Smin = [x*no_atoms_first_block[0]+1 for x in range(no_blocks[0]+1)]
-	Smin.extend([int(Smin[-1]+x*channel_atoms_per_block) for x in range(1, no_blocks[1]+1)])
-	Smin.extend([int(Smin[-1]+x*no_atoms_first_block[1]) for x in range(1, no_blocks[2]+1)])
-	Smin[-1] = Smin[-1] -1
+	start = 1
+	stop = no_atoms_first_block[0]*no_blocks[0]+1
+	step = no_atoms_first_block[0]
+	Smin = np.arange(start, stop+step, step)
+	
+	start = num_left_contact_atoms+1 + np.ceil((num_atoms-num_left_contact_atoms+1-num_right_contact_atoms+1)/no_blocks[1])
+	stop = num_atoms-num_right_contact_atoms
+	step = np.ceil((num_atoms-num_left_contact_atoms+1 - num_right_contact_atoms+1)/no_blocks[1])
+	Smin = np.append(Smin, np.arange(start, stop, step))
+	
+	start = num_atoms - num_right_contact_atoms+1
+	stop =  num_atoms
+	step = no_atoms_first_block[1]
+	Smin = np.append(Smin, np.arange(start, stop, step))
+	
+	Smin = np.append(Smin, num_atoms) 
+	Smin = Smin.astype(int)
 	
 	with open('Smin_dat', 'w') as filehandle:
 		filehandle.write('{:d}\n'.format(len(Smin)-1))
@@ -328,29 +345,28 @@ def clean_matrix(M, Smin, num_orb_per_atom):
 				M[blocks[jj]:blocks[jj+1], blocks[ii]:blocks[ii+1]] = 0	
 		
 	return M
+
+
+input_files = [user_inputs['xyz_file'], user_inputs['KS_file'], user_inputs['S_file'], user_inputs['output_log']]
+@check.input_file_existence(os.getcwd(), input_files)
+def main(input_files):
 		
-		
-def main():
-	
 	'''
 	Main process to create hamiltonian, overlap matrix, and other necessary input files for OMEN calculations
 	
 	'''
+	dfxghfghgfhfg
 	
 	print('**************** Making inputs for OMEN ********************')
-	
+
 	t0 = time.time()
 	
 	# Input dictionary entries (@Manasa: put this in a json later)
-	no_blocks = [5, 4, 5]
-	no_atoms_first_block = [128, 128]
-	delete_blocks = [0, 0]
-	repeat_blocks = [3, 3]
-	eps = 1e-6
-	xyz_file = 'structure.xyz'
-	KS_file = 'geoopt-KS_SPIN_1-1_0.csr'
-	S_file = 'geoopt-S_SPIN_1-1_0.csr'
-	output_log = 'log_energy.out'
+	no_blocks = user_inputs['no_blocks']
+	no_atoms_first_block = user_input['no_atoms_first_block']
+	delete_blocks = user_input['delete_blocks']
+	repeat_blocks = user_input['repeat_blocks']
+	eps = user_input['eps']
 	
 	# Parameters:
 	hartree_to_eV = 27.2114
@@ -358,18 +374,18 @@ def main():
 	dE_inner = 2e-3
 	rE_outer = 5
 	rE_inner = 0.1
-	Vd = 0.5
+	Vd = user_inputs['Vd']
 	
 	# Get atomic structure information:
-	atomic_kinds, no_orbitals = extract_basis_set(output_log)
-	lattice, atoms, coords = utils.read_xyz(xyz_file)
+	atomic_kinds, no_orbitals = extract_basis_set(user_inputs['output_log'])
+	lattice, atoms, coords = utils.read_xyz(user_inputs['xyz_file'])	
 	num_orb_per_atom = np.array([int(no_orbitals[atomic_kinds.index(atom)]) for atom in atoms])
 	coords = np.column_stack((coords, np.array([int(atomic_kinds.index(atom))+1 for atom in atoms])))
 	print(f'found {len(atomic_kinds)} atomic kinds: {atomic_kinds}, with corresponding # orbitals: {no_orbitals}')\
 		
 	# Get Kohn-Sham and Overlap matrices from bin files in index-value format
-	H = utils.read_bin(binfile=KS_file, struct_fmt='<IIIdI')
-	S = utils.read_bin(binfile=S_file, struct_fmt='<IIIdI')
+	H = utils.read_bin(binfile=user_inputs['KS_file'], struct_fmt='<IIIdI')
+	S = utils.read_bin(binfile=user_inputs['S_file'], struct_fmt='<IIIdI')
 	t1 = time.time()
 	print('Read binary files in '+str(t1-t0)+' s')
 	
@@ -385,14 +401,10 @@ def main():
 	print('Built Hamiltonian and overlap matrices in '+str(t2-t1)+' s')
 	
 	# Print text files:
-	print('Writing LM, lattice, Smin, E, and mat_par files...')
 	print_lattice_files(LM, atomic_kinds)	
-	
 	Smin = print_Smin_file(LM, no_blocks, no_atoms_first_block)
-	
-	Ef = utils.get_value_from_file(output_log, 'Fermi level')*hartree_to_eV
+	Ef = utils.get_value_from_file(user_inputs['output_log'], 'Fermi level')*hartree_to_eV
 	print_E_file(Ef, dE_outer, dE_inner, rE_outer, rE_inner)
-	
 	print_matpar_file(atomic_kinds, no_orbitals, Ef)
 	
 	# Checking the matrices for building errors:
@@ -409,7 +421,7 @@ def main():
 	#utils.write_mat_to_bin('H_4.bin', H)
 	#utils.write_mat_to_bin('S_4.bin', S)
 	t3 = time.time()
-	print('Binary files written, '+str(t3-t2)+' s')
+	print('Binary files written in '+str(t3-t2)+' s')
 	
 	# Load the command file dictionary and modify it
 	dimensions_min = np.min(LM[:, :3], axis =0)/10
@@ -422,7 +434,7 @@ def main():
 	"fermi_level": Ef,
 	"Vdmin": Vd,
 	"Vdmax": Vd,
-	"restart": [2, 0, 0, 0],
+	"restart": "[2 0 0 0]",
 	"vact_file": 'vact_dat',
 	"Lc": dimensions_max[0]-6+1e-3,
 	"tc": dimensions_max[1]+1e-3,
@@ -435,7 +447,7 @@ def main():
 	with open(os.getcwd()+'/lib/input_templates/run_transport_sh.json') as job_json_file:
 		jobfile = json.load(job_json_file)
 	utils.dump_dict_plaintext('run_transport.sh', jobfile, 'bash')
-	
+		
 	t4 = time.time()
 	print('Finished pre-processing. Matrices and input files are ready to use.')
 	print('Total runtime '+str(t4-t0)+' s')	

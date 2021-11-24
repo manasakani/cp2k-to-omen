@@ -1,0 +1,11 @@
+{
+	"no_blocks":  [5, 6, 5],
+	"no_atoms_first_block": [128, 128],
+	"delete_blocks": [0, 0],
+	"repeat_blocks": [2, 2],
+	"eps": 1e-6,
+	"xyz_file": "structure.xyz",
+	"KS_file": "geoopt-KS_SPIN_1-1_0.csr",
+	"S_file": "geoopt-S_SPIN_1-1_0.csr",
+	"output_log" :"log_energy.out"
+}

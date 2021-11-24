@@ -183,6 +183,7 @@ def bin_to_csr(M):
 def dump_dict_plaintext(filename, dictionary, filetype='C'):
 	'''
 	Writes a dictionary to a plaintext file with each key-value pair seperated by a '='
+	filetype=bash writes the specific former GreenSolver.job file that runs OMEN
 	
 	'''
 	
@@ -191,6 +192,7 @@ def dump_dict_plaintext(filename, dictionary, filetype='C'):
 		if filetype == 'C':
 			for field, value in dictionary.items():
 				f.write(str(field)+'\t\t\t = '+str(value)+';\n')
+				
 		if filetype == 'bash':
 			f.write('#!/bin/bash --login \n')
 			for field, value in dictionary.items():
