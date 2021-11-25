@@ -7,6 +7,9 @@ from copy import deepcopy
 from lib import utils
 from lib import input_decorators as check
 
+# To be done:
+# contact lengths (3 + 3) and Ls (6) are still hardcoded, add to input json file
+
 #Load the User Inputs
 with open('user_inputs.json') as filehandle:
 		user_inputs = json.load(filehandle)
@@ -226,21 +229,23 @@ def print_Smin_file(LM, no_blocks, no_atoms_first_block):
 	Internal. Prints the Smin file (indices of the start of each block)
 	
 	'''
+	#@Manasa: Ask Fabian why we removing two channel blocks
+	no_blocks[1] = no_blocks[1] -2
 	
 	num_atoms = np.shape(LM)[0]
 	num_left_contact_atoms = no_blocks[0]*no_atoms_first_block[0]
 	num_right_contact_atoms = no_blocks[2]*no_atoms_first_block[1]
 	num_channel_atoms = num_atoms - num_left_contact_atoms - num_right_contact_atoms
-	channel_atoms_per_block = num_channel_atoms/no_blocks[1]
+	channel_atoms_per_block = np.ceil(num_channel_atoms/no_blocks[1])
 	
 	start = 1
 	stop = no_atoms_first_block[0]*no_blocks[0]+1
 	step = no_atoms_first_block[0]
 	Smin = np.arange(start, stop+step, step)
 	
-	start = num_left_contact_atoms+1 + np.ceil((num_atoms-num_left_contact_atoms+1-num_right_contact_atoms+1)/no_blocks[1])
+	start = num_left_contact_atoms+1 + channel_atoms_per_block
 	stop = num_atoms-num_right_contact_atoms
-	step = np.ceil((num_atoms-num_left_contact_atoms+1 - num_right_contact_atoms+1)/no_blocks[1])
+	step = channel_atoms_per_block
 	Smin = np.append(Smin, np.arange(start, stop, step))
 	
 	start = num_atoms - num_right_contact_atoms+1
@@ -321,21 +326,21 @@ def clean_matrix(M, Smin, num_orb_per_atom):
 	blocks = np.cumsum(block_size)+1
 	blocks = np.concatenate(([1], blocks), axis=0)
 	blocks = blocks.astype(int)
-	
+		
 	neigh = -1*np.ones((2, len(blocks)-1))
-	
+			
 	# Calculate forward neighbors
 	for ind1 in range(np.shape(neigh)[1]):
 		for ind2 in range(ind1, np.shape(neigh)[1]):
-			if np.count_nonzero(M[blocks[ind1]-1:blocks[ind1+1]-1 , blocks[ind2]-1:blocks[ind2+1]-1])>0:
+			if (M[blocks[ind1]-1:blocks[ind1+1]-2 , blocks[ind2]-1:blocks[ind2+1]-2] > 0).any():
 				neigh[0, ind1] += 1
-				
+		
 	# Calculate backward neighbors
 	for ind1 in range(np.shape(neigh)[1]):
 		for ind2 in range(ind1, -1, -1):
-			if np.count_nonzero(M[blocks[ind2]-1:blocks[ind2+1]-1 , blocks[ind1]-1:blocks[ind1+1]-1])>0:
+			if (M[blocks[ind2]-1:blocks[ind2+1]-2 , blocks[ind1]-1:blocks[ind1+1]-2] > 0).any():
 				neigh[1, ind1] += 1
-				
+								
 	# Delete the entries that are beyond the intended neighbors
 	nn = int(neigh[0, 0])
 	for ii in range(np.shape(neigh)[1] - nn):
@@ -343,7 +348,7 @@ def clean_matrix(M, Smin, num_orb_per_atom):
 			if np.count_nonzero(M[blocks[ii]:blocks[ii+1], blocks[jj]:blocks[jj+1]]) > 0:
 				M[blocks[ii]:blocks[ii+1], blocks[jj]:blocks[jj+1]] = 0
 				M[blocks[jj]:blocks[jj+1], blocks[ii]:blocks[ii+1]] = 0	
-		
+						
 	return M
 
 
@@ -355,7 +360,6 @@ def main(input_files):
 	Main process to create hamiltonian, overlap matrix, and other necessary input files for OMEN calculations
 	
 	'''
-	dfxghfghgfhfg
 	
 	print('**************** Making inputs for OMEN ********************')
 
@@ -363,10 +367,10 @@ def main(input_files):
 	
 	# Input dictionary entries (@Manasa: put this in a json later)
 	no_blocks = user_inputs['no_blocks']
-	no_atoms_first_block = user_input['no_atoms_first_block']
-	delete_blocks = user_input['delete_blocks']
-	repeat_blocks = user_input['repeat_blocks']
-	eps = user_input['eps']
+	no_atoms_first_block = user_inputs['no_atoms_first_block']
+	delete_blocks = user_inputs['delete_blocks']
+	repeat_blocks = user_inputs['repeat_blocks']
+	eps = user_inputs['eps']
 	
 	# Parameters:
 	hartree_to_eV = 27.2114
@@ -409,17 +413,17 @@ def main(input_files):
 	
 	# Checking the matrices for building errors:
 	get_warnings(H)
-	
+
 	# Cleaning the matrices
 	print('Cleaning matrix entries beyond the expected # of nearest neighbors...')
 	num_orb_per_atom = np.array([no_orbitals[int(index)-1] for index in LM[:, -1]])
 	H = clean_matrix(H, Smin, num_orb_per_atom)
 	S = clean_matrix(S, Smin, num_orb_per_atom)	
-	
+
 	# Write binary files for the hamiltonian and overlap matrices
 	print('Writing Hamiltonian and Overlap matrices to .bin...')
-	#utils.write_mat_to_bin('H_4.bin', H)
-	#utils.write_mat_to_bin('S_4.bin', S)
+	utils.write_mat_to_bin('H_4.bin', H, Hmax*eps)
+	utils.write_mat_to_bin('S_4.bin', S, Hmax*eps*0.1)
 	t3 = time.time()
 	print('Binary files written in '+str(t3-t2)+' s')
 	

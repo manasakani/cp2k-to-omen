@@ -83,7 +83,7 @@ def read_bin(binfile, struct_fmt='<IIIdI'):
 
 	return M
 
-def write_mat_to_bin(binfile, M, struct_fmt='d'):
+def write_mat_to_bin(binfile, M, eps, struct_fmt='d'):
 	
 	''' 
 	Writes a little endian binary file composed of the csr-representation of the input matrix
@@ -96,20 +96,22 @@ def write_mat_to_bin(binfile, M, struct_fmt='d'):
 	Returns:
 		None
 	'''
-		
-	#Find nonzero entries and indices and create a csr representation
+	# Remove all elements smaller than eps
+	M[np.absolute(M)<eps] = 0		
+	
+	# Find nonzero entries and indices and create a csr representation
 	indices = np.nonzero(M)
 	values = M[indices]
 	
 	# Format csr matrix, and change to 1-indexing
 	M_4 = np.column_stack((np.transpose(indices), values))
 	M_4 = M_4 + [1, 1, 0]
-		
+	
 	# Write to bin file in order:	
 	with open(binfile, "wb") as f:
 		
 		# First line is some bookkeeping of the matrix sizes:
-		f.write(struct.pack('<ddd', np.shape(M)[0], np.shape(M_4)[1], 1))
+		f.write(struct.pack('<ddd', np.shape(M)[0], np.shape(M_4)[0], 1))
 		
 		# Write to binary in the form (x-ind, y-ind, real(value), imag(value))
 		for nonzero_entry in M_4:
