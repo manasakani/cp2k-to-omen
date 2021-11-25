@@ -7,5 +7,6 @@
 	"xyz_file": "structure.xyz",
 	"KS_file": "geoopt-KS_SPIN_1-1_0.csr",
 	"S_file": "geoopt-S_SPIN_1-1_0.csr",
-	"output_log" :"log_energy.out"
+	"output_log" :"log_energy.out",
+	"Vd": 0.5,
 }
