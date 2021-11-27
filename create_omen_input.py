@@ -7,9 +7,6 @@ from copy import deepcopy
 from lib import utils
 from lib import input_decorators as check
 
-# To be done:
-# contact lengths (3 + 3) and Ls (6) are still hardcoded, add to input json file
-
 #Load the User Inputs
 with open('user_inputs.json') as filehandle:
 		user_inputs = json.load(filehandle)
@@ -44,6 +41,7 @@ def create_device_matrix(M, coords, num_orb_per_atom, blocks, no_atoms_per_block
 	@Manasa: clean up this function it looks atrocious.
 
 	'''
+	
 	M = np.array(M)
 	size_M = np.shape(M)[0]
 
@@ -85,7 +83,6 @@ def create_device_matrix(M, coords, num_orb_per_atom, blocks, no_atoms_per_block
 	d = [np.mean(coords[no_atoms_per_block[0]:2*no_atoms_per_block[0], 0] - coords[:no_atoms_per_block[0], 0]),\
 	 np.mean(coords[-no_atoms_per_block[1]:, 0] - coords[-2*no_atoms_per_block[1]:-no_atoms_per_block[1], 0])]
 	 
-
 	# **************************
 	# Repeating the left contact
 	# **************************
@@ -108,7 +105,7 @@ def create_device_matrix(M, coords, num_orb_per_atom, blocks, no_atoms_per_block
 	M_bottom = np.concatenate((np.zeros((size_M, left_repeats*num_orb_left)), M), axis = 1)
 	M = np.concatenate((M_top, M_bottom), axis = 0)
 	
-		
+	
 	# **************************
 	# Repeating the right contact
 	# **************************
@@ -132,8 +129,7 @@ def create_device_matrix(M, coords, num_orb_per_atom, blocks, no_atoms_per_block
 	M_top = np.concatenate((M, np.zeros((right_repeats*num_orb_right, size_M))), axis = 0)
 	M_bottom = np.concatenate((np.zeros((size_M-num_orb_right*no_neigh_right, right_repeats*num_orb_right)), Mnew), axis=0)
 	M = np.concatenate((M_top, M_bottom), axis = 1)
-	
-	
+
 	# **************************
 	# Preparing the boundary
 	# **************************
@@ -155,12 +151,12 @@ def create_device_matrix(M, coords, num_orb_per_atom, blocks, no_atoms_per_block
 		Mnew = Mnew + np.kron(np.diag(np.ones(2*no_right-ind), ind), M[size_M-num_orb_right*(ind+1):size_M-num_orb_right*ind, size_M-num_orb_right:size_M])
 		
 	M[size_M-num_orb_right*no_right*2:size_M, size_M-num_orb_right*no_right*2:size_M] = Mnew
-
+	
 	# Create the full Hamiltonian
 	M = M + np.transpose(M) - np.diag(np.diag(M))
 	
 	#Save plot of sparsity pattern
-	plt.spy(M)
+	plt.spy(M, markersize=0.01)
 	plt.title(f'H Sparsity, nnz = {np.count_nonzero(M)}')
 	plt.savefig("H.png")
 	
@@ -183,7 +179,7 @@ def create_device_matrix(M, coords, num_orb_per_atom, blocks, no_atoms_per_block
 	
 	# Move the x-positions in the coord array to start at zero
 	LM[:,0] = LM[:,0] - np.min(LM[:,0])
-	
+
 	return M, LM		
 
 def print_lattice_files(LM, atomic_kinds):
@@ -201,10 +197,16 @@ def print_lattice_files(LM, atomic_kinds):
 	
 	# Make 'box' with 'f' % empty space around it:
 	f = 1.1
-	Lx = np.max(LM[:,0])-np.min(LM[:,0])*f
-	Ly = np.max(LM[:,1])-np.min(LM[:,1])*f
-	Lz = np.max(LM[:,2])-np.min(LM[:,2])*f
+	Lx = (np.max(LM[:,0])-np.min(LM[:,0]))*f
+	Ly = (np.max(LM[:,1])-np.min(LM[:,1]))*f
+	Lz = (np.max(LM[:,2])-np.min(LM[:,2]))*f
 	box = np.diag([Lx, Ly, Lz])
+	
+	# Don't count vacancies as atomic kinds:
+	if 'V' in atomic_kinds:
+		num_types = np.shape(atomic_kinds)[0] - 1
+	else:
+		num_types = np.shape(atomic_kinds)[0]
 	
 	# Print the LM_dat and lattice_dat files:
 	with open('LM_dat', 'w') as filehandle:
@@ -213,15 +215,15 @@ def print_lattice_files(LM, atomic_kinds):
 
 	with open('lattice_dat', 'w') as filehandle:
 		# Write cell size:
-		filehandle.write('{} {} {} {} {}\n\n'.format(np.shape(LM)[0], np.shape(atomic_kinds)[0], 0, 0, 0))
+		filehandle.write('{} {} {} {} {}\n\n'.format(np.shape(LM)[0], num_types, 0, 0, 0))
 		# Write device size (periodic repeating unit)
 		filehandle.write('{} {} {}\n'.format(box[0, 0], box[0, 1], box[0, 2]))
 		filehandle.write('{} {} {}\n'.format(box[1, 0], box[1, 1], box[1, 2]))
-		filehandle.write('{} {} {}\n'.format(box[2, 0], box[2, 1], box[2, 2]))
+		filehandle.write('{} {} {}\n\n'.format(box[2, 0], box[2, 1], box[2, 2]))
 		
 		for atom, row in zip(atom_names, lattice):
 			filehandle.write('{}\t{:.7f}\t{:.7f}\t{:.7f}\n'.format(atom, row[0], row[1], row[2]))
-			
+		
 	
 	
 def print_Smin_file(LM, no_blocks, no_atoms_first_block):
@@ -229,7 +231,7 @@ def print_Smin_file(LM, no_blocks, no_atoms_first_block):
 	Internal. Prints the Smin file (indices of the start of each block)
 	
 	'''
-	#@Manasa: Ask Fabian why we removing two channel blocks
+	#@Manasa: why are we removing two channel blocks???
 	no_blocks[1] = no_blocks[1] -2
 	
 	num_atoms = np.shape(LM)[0]
@@ -340,7 +342,7 @@ def clean_matrix(M, Smin, num_orb_per_atom):
 		for ind2 in range(ind1, -1, -1):
 			if (M[blocks[ind2]-1:blocks[ind2+1]-2 , blocks[ind1]-1:blocks[ind1+1]-2] > 0).any():
 				neigh[1, ind1] += 1
-								
+		
 	# Delete the entries that are beyond the intended neighbors
 	nn = int(neigh[0, 0])
 	for ii in range(np.shape(neigh)[1] - nn):
@@ -385,14 +387,24 @@ def main(input_files):
 	lattice, atoms, coords = utils.read_xyz(user_inputs['xyz_file'])	
 	num_orb_per_atom = np.array([int(no_orbitals[atomic_kinds.index(atom)]) for atom in atoms])
 	coords = np.column_stack((coords, np.array([int(atomic_kinds.index(atom))+1 for atom in atoms])))
-	print(f'found {len(atomic_kinds)} atomic kinds: {atomic_kinds}, with corresponding # orbitals: {no_orbitals}')\
-		
-	# Get Kohn-Sham and Overlap matrices from bin files in index-value format
-	H = utils.read_bin(binfile=user_inputs['KS_file'], struct_fmt='<IIIdI')
-	S = utils.read_bin(binfile=user_inputs['S_file'], struct_fmt='<IIIdI')
-	t1 = time.time()
-	print('Read binary files in '+str(t1-t0)+' s')
+	print(f'found {len(atomic_kinds)} atomic kinds: {atomic_kinds}, with corresponding # orbitals: {no_orbitals}')
 	
+	
+	# Get Kohn-Sham and Overlap matrices from bin files in index-value format
+	if os.path.isfile(os.getcwd()+'/H.dat') and os.path.isfile(os.getcwd()+'/S.dat'):
+		H = np.load('H.dat', allow_pickle=True)
+		S = np.load('S.dat', allow_pickle=True)
+		t1 = time.time()
+		print('Read matrices from pickles in '+str(t1-t0)+' s')
+	else:
+		H = utils.read_bin(binfile=user_inputs['KS_file'], struct_fmt='<IIIdI')
+		S = utils.read_bin(binfile=user_inputs['S_file'], struct_fmt='<IIIdI')
+		H.dump('H.dat')
+		S.dump('S.dat')
+		t1 = time.time()
+		print('Read matrices from binary files in '+str(t1-t0)+' s')
+		
+		
 	# Convert to full matrices
 	H = utils.bin_to_csr(H)*hartree_to_eV
 	S = utils.bin_to_csr(S)
@@ -403,7 +415,7 @@ def main(input_files):
 	S = create_device_matrix(S, coords, num_orb_per_atom, no_blocks, no_atoms_first_block, no_orbitals, delete_blocks, repeat_blocks, Hmax*eps*0.1)[0]
 	t2 = time.time()
 	print('Built Hamiltonian and overlap matrices in '+str(t2-t1)+' s')
-	
+
 	# Print text files:
 	print_lattice_files(LM, atomic_kinds)	
 	Smin = print_Smin_file(LM, no_blocks, no_atoms_first_block)
