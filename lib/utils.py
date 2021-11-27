@@ -83,7 +83,7 @@ def read_bin(binfile, struct_fmt='<IIIdI'):
 
 	return M
 
-def write_mat_to_bin(binfile, M, eps, struct_fmt='d'):
+def write_mat_to_bin(binfile, M, eps=0, struct_fmt='d'):
 	
 	''' 
 	Writes a little endian binary file composed of the csr-representation of the input matrix
@@ -91,7 +91,8 @@ def write_mat_to_bin(binfile, M, eps, struct_fmt='d'):
 	Args:
 		1. (str) .bin file name which the output will be printed to
 		2. (*x* numpy array) a matrix which should be written to a file
-		2. (str) data type to use for binary conversions
+		3. If eps is specified, |matrix elements| < eps are deleted
+		4. (str) data type to use for binary conversions
 		
 	Returns:
 		None
@@ -106,17 +107,18 @@ def write_mat_to_bin(binfile, M, eps, struct_fmt='d'):
 	# Format csr matrix, and change to 1-indexing
 	M_4 = np.column_stack((np.transpose(indices), values))
 	M_4 = M_4 + [1, 1, 0]
+	M_4 = np.column_stack((M_4[:,0], M_4[:,1], np.real(M_4[:,2]), np.imag(M_4[:,2])))
+	header = [np.shape(M)[0], np.shape(M_4)[0], 1]
 	
-	# Write to bin file in order:	
-	with open(binfile, "wb") as f:
-		
-		# First line is some bookkeeping of the matrix sizes:
-		f.write(struct.pack('<ddd', np.shape(M)[0], np.shape(M_4)[0], 1))
-		
-		# Write to binary in the form (x-ind, y-ind, real(value), imag(value))
-		for nonzero_entry in M_4:
-			fmt = '<'+4*struct_fmt
-			f.write(struct.pack(fmt, nonzero_entry[0], nonzero_entry[1], nonzero_entry[2].real, nonzero_entry[2].imag))
+	# Sort by indices:
+	index = np.lexsort((M_4[:,1],M_4[:,0]))
+	M_4 = M_4[index]
+
+	# Write to binary file:
+	M_4_write = np.reshape(M_4,(M_4.size,1))
+	np.concatenate((np.reshape(header,(3,1)), M_4_write)).astype('double').tofile(os.path.join('./',binfile))
+	
+
 		
 
 def read_xyz(filename):
