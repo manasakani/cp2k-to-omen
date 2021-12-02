@@ -413,9 +413,6 @@ def main(input_files):
 	coords = np.column_stack((coords, np.array([int(atomic_kinds.index(atom))+1 for atom in atoms])))
 	print(f'found {len(atomic_kinds)} atomic kinds: {atomic_kinds}, with corresponding # orbitals: {no_orbitals}')
 	
-	create_potential_file()
-	sdfgfdgfdg
-	
 	# Get Kohn-Sham and Overlap matrices from bin files in index-value format
 	if os.path.isfile(os.getcwd()+'/H.dat') and os.path.isfile(os.getcwd()+'/S.dat'):
 		H = np.load('H.dat', allow_pickle=True)
@@ -448,7 +445,7 @@ def main(input_files):
 	Ef = utils.get_value_from_file(user_inputs['output_log'], 'Fermi level')*hartree_to_eV
 	print_E_file(Ef, dE_outer, dE_inner, rE_outer, rE_inner)
 	print_matpar_file(atomic_kinds, no_orbitals, Ef)
-	create_potential_file(no_blocks, no_atoms_first_block)
+	create_potential_file()
 	
 	# Checking the matrices for building errors:
 	get_warnings(H)
