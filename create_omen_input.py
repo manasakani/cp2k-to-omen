@@ -352,8 +352,32 @@ def clean_matrix(M, Smin, num_orb_per_atom):
 				M[blocks[jj]:blocks[jj+1], blocks[ii]:blocks[ii+1]] = 0	
 						
 	return M
+	
 
+@check.input_file_existence(os.getcwd(), ['lattice_dat'])
+def create_potential_file(lattice_file):
+	
+	n = user_inputs['no_blocks']
+	b = user_inputs['no_atoms_first_block']
+	Vd = user_inputs['Vd']
 
+	lattice, atoms, coords = utils.read_xyz(lattice_file[0])	
+	x_coord = coords[:, 0]
+
+	
+	v_contacts = np.zeros((n[0]*b[0]))
+	v_channel = -Vd*(x_coord[n[0]*b[0]:-n[-1]*b[-1]] - x_coord[n[0]*b[0]])/(x_coord[-n[-1]*b[-1]] - x_coord[n[0]*b[0]])
+	potential = np.concatenate((v_contacts, v_channel, v_contacts-Vd), axis=0)
+		
+	plt.plot(x_coord, potential)
+	plt.title(f'Potential')
+	plt.savefig("Vd.png")
+	
+	with open('vact_dat', 'w') as f:
+		for point in potential:
+			f.write('{:6f} '.format(point))
+	
+	
 input_files = [user_inputs['xyz_file'], user_inputs['KS_file'], user_inputs['S_file'], user_inputs['output_log']]
 @check.input_file_existence(os.getcwd(), input_files)
 def main(input_files):
@@ -389,6 +413,8 @@ def main(input_files):
 	coords = np.column_stack((coords, np.array([int(atomic_kinds.index(atom))+1 for atom in atoms])))
 	print(f'found {len(atomic_kinds)} atomic kinds: {atomic_kinds}, with corresponding # orbitals: {no_orbitals}')
 	
+	create_potential_file()
+	sdfgfdgfdg
 	
 	# Get Kohn-Sham and Overlap matrices from bin files in index-value format
 	if os.path.isfile(os.getcwd()+'/H.dat') and os.path.isfile(os.getcwd()+'/S.dat'):
@@ -422,6 +448,7 @@ def main(input_files):
 	Ef = utils.get_value_from_file(user_inputs['output_log'], 'Fermi level')*hartree_to_eV
 	print_E_file(Ef, dE_outer, dE_inner, rE_outer, rE_inner)
 	print_matpar_file(atomic_kinds, no_orbitals, Ef)
+	create_potential_file(no_blocks, no_atoms_first_block)
 	
 	# Checking the matrices for building errors:
 	get_warnings(H)
