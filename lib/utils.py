@@ -137,16 +137,25 @@ def read_xyz(filename):
 	 
 	atoms = []
 	coords = []
+	lattice = []
 	 
 	with open(filename , "rt") as myfile:
 		for line in myfile:
+			# num_atoms line
 			if len(line.split()) == 1:
 				pass
+			# blank line
+			elif len(line.split()) == 0:
+				pass
+			# line with cell parameters
 			elif line.split()[0] in ['Cell:', 'cell:']:
 				lattice = line.split()[1:4]
-			else:
+			# line with atoms and positions
+			elif len(line.split()) == 4:
 				atoms.append(line.split()[0])
 				coords.append(line.split()[1:])
+			else:
+				pass
 	coords = np.asarray(coords, dtype=np.float64)
 	lattice = np.asarray(lattice, dtype=np.float64)
 	
