@@ -469,7 +469,6 @@ def main(input_files):
 	with open(os.getcwd()+'/lib/input_templates/omen_cmd.json') as cmd_json_file:
 		omen_cmds = json.load(cmd_json_file)
 			
-	#@Manasa: Ask Fabian what this '-6' is
 	omen_cmds.update({
 	"fermi_level": Ef,
 	"Vdmin": Vd,
