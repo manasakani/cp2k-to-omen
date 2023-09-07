@@ -484,9 +484,9 @@ def main(input_files):
 	utils.dump_dict_plaintext('omen.cmd', omen_cmds, 'C')
 	
 	# Edit job script:
-	with open(os.getcwd()+'/lib/input_templates/run_transport_sh.json') as job_json_file:
+	"""with open(os.getcwd()+'/lib/input_templates/run_transport_sh.json') as job_json_file:
 		jobfile = json.load(job_json_file)
-	utils.dump_dict_plaintext('run_transport.sh', jobfile, 'bash')
+	utils.dump_dict_plaintext('run_transport.sh', jobfile, 'bash')"""
 		
 	t4 = time.time()
 	print('Finished pre-processing. Matrices and input files are ready to use.')
